@@ -1,0 +1,21 @@
+{
+  "name": "payments",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "dotenv -e .env.local -- pnpm prisma migrate dev"
+  },
+  "dependencies": {
+    "@portone/server-sdk": "^0.8.1",
+    "@prisma/client": "^6.1.0",
+    "prisma": "^6.1.0",
+    "uuid": "^11.0.4"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0"
+  }
+}

@@ -1,0 +1,62 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("AUTH_DATABASE_URL")
+}
+
+model Avatars {
+  id        Int    @id @default(autoincrement())
+  public_id String
+  url       String
+  user      User?  @relation(fields: [userId], references: [id])
+  userId    Int?   @unique
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model User {
+  id            Int         @id @default(autoincrement())
+  name          String
+  email         String      @unique
+  password      String
+  phone_number  String      @unique
+  address       String?
+  roles         String[]
+  activate      Boolean     @default(false)
+  avatar        Avatars?
+  activation    Activation?
+  access_token  String?
+  refresh_token String?
+
+  passwordHistories PasswordHistory[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Activation {
+  id              Int    @id @default(autoincrement())
+  email           String
+  activation_code String
+
+  user   User? @relation(fields: [userId], references: [id])
+  userId Int?  @unique
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model PasswordHistory {
+  id        Int      @id @default(autoincrement())
+  password  String
+  createdAt DateTime @default(now())
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+}

@@ -1,0 +1,46 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PAYMENTS_DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  READY
+  PAID
+  FAILED
+  CANCELLED
+}
+
+model Order {
+  id     String      @id @default(uuid())
+  amount Float
+  status OrderStatus @default(PENDING)
+
+  payment   Payment?
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  amount        Float
+  impUid        String?
+  merchantUid   String        @unique
+  paymentStatus PaymentStatus @default(READY)
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}

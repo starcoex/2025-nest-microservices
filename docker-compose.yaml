@@ -1,0 +1,98 @@
+services:
+  reservations:
+    build:
+      context: .
+      dockerfile: ./apps/reservations/Dockerfile
+      target: development
+    command: sh -c "pnpm prisma migrate deploy --schema apps/reservations/prisma/schema.prisma && pnpm prisma generate --schema apps/reservations/prisma/schema.prisma && pnpm run start:dev reservations"
+    env_file:
+      - ./apps/reservations/.env
+    ports:
+      - "3101:3101"
+    volumes:
+      - .:/usr/src/app
+  auth:
+    build:
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+      target: development
+    command: sh -c "pnpm prisma migrate deploy --schema apps/auth/prisma/schema.prisma && pnpm prisma generate --schema apps/auth/prisma/schema.prisma && pnpm run start:dev auth"
+    env_file:
+      - ./apps/auth/.env
+    ports:
+      - "3102:3102"
+    volumes:
+      - .:/usr/src/app
+#  twilio:
+#    build:
+#      context: .
+#      dockerfile: ./apps/twilio/Dockerfile
+#      target: development
+#    command: sh -c "pnpm prisma migrate deploy --schema apps/twilio/prisma/schema.prisma && pnpm prisma generate --schema apps/twilio/prisma/schema.prisma && pnpm run start:dev twilio"
+#    env_file:
+#      - ./apps/twilio/.env
+#    ports:
+#      - "6007:6007"
+#    volumes:
+#      - .:/usr/src/app
+  payments:
+    build:
+      context: .
+      dockerfile: ./apps/payments/Dockerfile
+      target: development
+    command: sh -c "pnpm prisma migrate deploy --schema apps/payments/prisma/schema.prisma && pnpm prisma generate --schema apps/payments/prisma/schema.prisma && pnpm run start:dev payments"
+    env_file:
+      - ./apps/payments/.env
+    ports:
+      - "3104:3104"
+    volumes:
+      - .:/usr/src/app
+  notifications:
+    build:
+      context: .
+      dockerfile: ./apps/notifications/Dockerfile
+      target: development
+#    command: sh -c "pnpm prisma migrate deploy --schema apps/notifications/prisma/schema.prisma && pnpm prisma generate --schema apps/notifications/prisma/schema.prisma && pnpm run start:dev notifications"
+    command: pnpm run start:dev notifications
+    env_file:
+      - ./apps/notifications/.env
+    ports:
+      - "3103:3103"
+    volumes:
+      - .:/usr/src/app
+#  orders:
+#    build:
+#      context: .
+#      dockerfile: ./apps/orders/Dockerfile
+#      target: development
+#    command: sh -c "pnpm prisma migrate deploy --schema apps/orders/prisma/schema.prisma && pnpm prisma generate --schema apps/orders/prisma/schema.prisma && pnpm run start:dev orders"
+#    env_file:
+#      - ./apps/orders/.env
+#    ports:
+#      - "6005:6005"
+#    volumes:
+#      - .:/usr/src/app
+#  products:
+#    build:
+#      context: .
+#      dockerfile: ./apps/products/Dockerfile
+#      target: development
+#    command: sh -c "pnpm prisma migrate deploy --schema apps/products/prisma/schema.prisma && pnpm prisma generate --schema apps/products/prisma/schema.prisma && pnpm run start:dev products"
+#    env_file:
+#      - ./apps/products/.env
+#    ports:
+#      - "6006:6006"
+#    volumes:
+#      - .:/usr/src/app
+  gateway:
+    build:
+      context: .
+      dockerfile: ./apps/gateway/Dockerfile
+      target: development
+    command: pnpm run start:dev gateway
+    env_file:
+      - ./apps/gateway/.env
+    ports:
+      - '3100:3100'
+    volumes:
+      - .:/usr/src/app
