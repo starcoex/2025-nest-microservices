@@ -18,6 +18,10 @@ import { AuthResolver } from './auth.resolver';
 import { PassportModule } from '@nestjs/passport';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { AccessTokenStrategy } from './strategies/access-token.strategy';
+import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
+import { AccessAuthGuard } from './guard/access-auth.guard';
+import { RefreshAuthGuard } from './guard/refresh-auth.guard';
 
 @Module({
   imports: [
@@ -62,6 +66,10 @@ import { GoogleStrategy } from './strategies/google.strategy';
     JwtRefreshStrategy,
     GoogleStrategy,
     AuthResolver,
+    AccessTokenStrategy,
+    RefreshTokenStrategy,
+    AccessAuthGuard,
+    RefreshAuthGuard,
   ],
 })
 export class AuthModule {}

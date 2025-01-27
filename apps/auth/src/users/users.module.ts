@@ -10,6 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { UsersController } from './users.controller';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { UsersController } from './users.controller';
     ]),
   ],
   controllers: [UsersController],
-  providers: [UsersResolver, UsersService, PrismaService],
+  providers: [UsersResolver, UsersService, PrismaService, JwtService],
   exports: [UsersService],
 })
 export class UsersModule {}

@@ -1,31 +1,26 @@
-import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
-import { User } from './users/entities/user.entity';
 import { UseGuards } from '@nestjs/common';
-import { GqlContext, GqlCurrentUser } from '@app/common';
-import { LoginInput } from './dto/login.input';
-import { JwtRefreshGuard } from './guard/jwt-refresh-auth.guard';
-import { GqlRefreshAuthGuard } from './guard/gql-refresh-auth.guard';
+import { LoginInput, LoginOutput } from './dto/login.input';
+import { TokensInput, TokensOutput } from './dto/tokens-input';
+import { RefreshAuthGuard } from './guard/refresh-auth.guard';
 
 @Resolver()
 export class AuthResolver {
   constructor(private authService: AuthService) {}
 
-  @Mutation(() => User)
+  @Mutation(() => LoginOutput)
   async loginGraphql(
     @Args('loginInput') loginInput: LoginInput,
-    @Context() context: GqlContext,
-  ) {
-    return this.authService.loginGraphql(loginInput, context);
+  ): Promise<LoginOutput> {
+    return this.authService.loginGraphql(loginInput);
   }
 
-  @Mutation(() => User)
-  @UseGuards(GqlRefreshAuthGuard)
+  @Mutation(() => TokensOutput)
+  @UseGuards(RefreshAuthGuard)
   async refreshGraphql(
-    @GqlCurrentUser() user: User,
-    @Context() context: GqlContext,
-  ) {
-    console.log('GqlCurrentUser', user);
-    return this.authService.loginGraphql(user, context);
+    @Args('tokensInput') tokensInput: TokensInput,
+  ): Promise<TokensOutput> {
+    return this.authService.refreshTokensGql(tokensInput);
   }
 }

@@ -1,11 +1,13 @@
 import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { CreateUserInput } from './dto/create-user.input';
+import { CreateUserInput, CreateUserOutput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../guard/gql-auth.guard';
 import { GqlCurrentUser } from '@app/common';
+import { AccessAuthGuard } from '../guard/access-auth.guard';
+import { UpdateInput, UpdateOutput } from './dto/update-input';
 
 @Resolver(() => User)
 export class UsersResolver {
@@ -16,8 +18,15 @@ export class UsersResolver {
     return this.usersService.createUser(createUserInput);
   }
 
+  @Mutation(() => CreateUserOutput)
+  createUserGql(
+    @Args('createUserInput') createUserInput: CreateUserInput,
+  ): Promise<CreateUserOutput> {
+    return this.usersService.createUserGql(createUserInput);
+  }
+
   @Query(() => [User], { name: 'users' })
-  @UseGuards(GqlAuthGuard)
+  // @UseGuards(GqlAuthGuard)
   getUsers(@GqlCurrentUser() user: User) {
     return this.usersService.getUsers();
   }
@@ -30,9 +39,13 @@ export class UsersResolver {
     return this.usersService.findOne(id);
   }
 
-  @Mutation(() => User)
-  updateUser(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
-    return this.usersService.update(updateUserInput.id, updateUserInput);
+  @UseGuards(AccessAuthGuard)
+  @Mutation(() => UpdateOutput)
+  updateGql(
+    @Args('id', { type: () => Int }) id: number,
+    @Args('updateInput') updateInput: UpdateInput,
+  ): Promise<UpdateOutput> {
+    return this.usersService.updateGql(id, updateInput);
   }
 
   @Mutation(() => User)
