@@ -2,8 +2,9 @@ import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
 import { UseGuards } from '@nestjs/common';
 import { LoginInput, LoginOutput } from './dto/login.input';
-import { TokensInput, TokensOutput } from './dto/tokens-input';
+import { TokensOutput } from './dto/tokens-input';
 import { RefreshAuthGuard } from './guard/refresh-auth.guard';
+import { LogoutInput } from './dto/logout.input';
 
 @Resolver()
 export class AuthResolver {
@@ -19,8 +20,17 @@ export class AuthResolver {
   @Mutation(() => TokensOutput)
   @UseGuards(RefreshAuthGuard)
   async refreshGraphql(
-    @Args('tokensInput') tokensInput: TokensInput,
+    @Args('userId') userId: number,
+    @Args('refresh_token') refresh_token: string,
   ): Promise<TokensOutput> {
-    return this.authService.refreshTokensGql(tokensInput);
+    return this.authService.refreshTokensGql(userId, refresh_token);
+  }
+
+  @Mutation(() => LoginOutput)
+  @UseGuards(RefreshAuthGuard)
+  async logOut(
+    @Args('logoutInput') logoutInput: LogoutInput,
+  ): Promise<LoginOutput> {
+    return this.authService.logOutGql(logoutInput);
   }
 }

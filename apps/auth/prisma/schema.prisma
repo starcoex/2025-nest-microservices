@@ -34,29 +34,18 @@ model User {
   access_token  String?
   refresh_token String?
 
-  passwordHistories PasswordHistory[]
-
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
 
 model Activation {
-  id              Int    @id @default(autoincrement())
-  email           String
-  activation_code String
+  id               Int     @id @default(autoincrement())
+  activation_code  String?
+  activation_token String?
 
-  user   User? @relation(fields: [userId], references: [id])
+  user   User? @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int?  @unique
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-}
-
-model PasswordHistory {
-  id        Int      @id @default(autoincrement())
-  password  String
-  createdAt DateTime @default(now())
-
-  user   User @relation(fields: [userId], references: [id])
-  userId Int
 }

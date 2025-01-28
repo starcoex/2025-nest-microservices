@@ -22,6 +22,7 @@ import { AccessTokenStrategy } from './strategies/access-token.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { AccessAuthGuard } from './guard/access-auth.guard';
 import { RefreshAuthGuard } from './guard/refresh-auth.guard';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { RefreshAuthGuard } from './guard/refresh-auth.guard';
     RefreshTokenStrategy,
     AccessAuthGuard,
     RefreshAuthGuard,
+    PrismaService,
   ],
 })
 export class AuthModule {}

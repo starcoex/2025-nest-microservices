@@ -51,7 +51,6 @@ export class AuthController implements AuthServiceController {
 
   @UseGuards(JwtAuthGuard)
   async authenticate(@Payload() data: any) {
-    console.log(data);
     return {
       ...data.user,
       id: data.user.id,

@@ -7,7 +7,9 @@ import * as bcrypt from 'bcryptjs';
 import { TokenPayload } from '@app/common';
 import { UsersService } from './users/users.service';
 import { LoginInput, LoginOutput } from './dto/login.input';
-import { TokensInput, TokensOutput } from './dto/tokens-input';
+import { TokensOutput } from './dto/tokens-input';
+import { PrismaService } from '../prisma/prisma.service';
+import { LogoutInput, LogoutOutput } from './dto/logout.input';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +17,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
+    private readonly prismaService: PrismaService,
   ) {}
 
   async login(user: User, response: Response, redirect = false) {
@@ -72,17 +75,20 @@ export class AuthService {
     }
   }
 
-  async refreshTokensGql(tokensInput: TokensInput): Promise<TokensOutput> {
+  async refreshTokensGql(
+    userId: number,
+    refresh_token: string,
+  ): Promise<TokensOutput> {
     try {
-      const user = await this.usersService.getUser(tokensInput.id);
-      if (!user || !tokensInput.refresh_token) {
+      const user = await this.usersService.getUser(userId);
+      if (!user || !refresh_token) {
         return {
           ok: false,
           error: '접근이 거부 되었습니다.',
         };
       }
       const refreshTokenMatches = await bcrypt.compare(
-        tokensInput.refresh_token,
+        refresh_token,
         user.refresh_token,
       );
       if (!refreshTokenMatches) {
@@ -97,6 +103,23 @@ export class AuthService {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
       };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  }
+
+  async logOutGql(logoutInput: LogoutInput): Promise<LogoutOutput> {
+    try {
+      const isLoggedOut = await this.prismaService.user.update({
+        where: { id: logoutInput.id },
+        data: { refresh_token: null },
+      });
+      if (isLoggedOut) {
+        return {
+          ok: true,
+        };
+      }
+      return { ok: false };
     } catch (error) {
       return { ok: false, error };
     }

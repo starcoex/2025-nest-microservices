@@ -1,13 +1,21 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { CreateUserInput, CreateUserOutput } from './dto/create-user.input';
-import { UpdateUserInput } from './dto/update-user.input';
 import { UseGuards } from '@nestjs/common';
-import { GqlAuthGuard } from '../guard/gql-auth.guard';
 import { GqlCurrentUser } from '@app/common';
 import { AccessAuthGuard } from '../guard/access-auth.guard';
 import { UpdateInput, UpdateOutput } from './dto/update-input';
+import { MeUserOutput } from './dto/me-user.input';
+import {
+  ForgotPasswordInput,
+  ForgotPasswordOutput,
+} from './dto/forgot-password.input';
+import {
+  ResetPasswordInput,
+  ResetPasswordOutput,
+} from './dto/reset-password.input';
+import { VerityEmailInput, VerityEmailOutput } from './dto/verity-email.input';
 
 @Resolver(() => User)
 export class UsersResolver {
@@ -26,37 +34,56 @@ export class UsersResolver {
   }
 
   @Query(() => [User], { name: 'users' })
-  // @UseGuards(GqlAuthGuard)
-  getUsers(@GqlCurrentUser() user: User) {
-    return this.usersService.getUsers();
+  @UseGuards(AccessAuthGuard)
+  getUsersGql() {
+    return this.usersService.getUsersGql();
   }
 
-  @Query(() => User)
-  async me(@Args('id') id: number) {}
+  @Query(() => MeUserOutput)
+  @UseGuards(AccessAuthGuard)
+  async meGql(@GqlCurrentUser() user: User): Promise<MeUserOutput> {
+    return this.usersService.meGql(user.id);
+  }
 
   @Query(() => User, { name: 'user' })
-  findOne(@Args('id', { type: () => Int }) id: number) {
-    return this.usersService.findOne(id);
+  @UseGuards(AccessAuthGuard)
+  getUserGql(@GqlCurrentUser() user: User) {
+    return this.usersService.getUserGql(user.id);
   }
 
   @UseGuards(AccessAuthGuard)
   @Mutation(() => UpdateOutput)
-  updateGql(
-    @Args('id', { type: () => Int }) id: number,
+  updateUserGql(
+    @GqlCurrentUser() user: User,
     @Args('updateInput') updateInput: UpdateInput,
   ): Promise<UpdateOutput> {
-    return this.usersService.updateGql(id, updateInput);
+    return this.usersService.updateUserGql(user.id, updateInput);
   }
 
   @Mutation(() => User)
-  updateUserPassword(
-    @Args('updateUserInput') updateUserInput: UpdateUserInput,
-  ) {
-    return this.usersService.updateUserPassword(updateUserInput);
+  @UseGuards(AccessAuthGuard)
+  removeUserGql(@GqlCurrentUser() user: User) {
+    return this.usersService.removeUserGql(user.id);
   }
 
-  @Mutation(() => User)
-  removeUser(@Args('id', { type: () => Int }) id: number) {
-    return this.usersService.remove(id);
+  @Mutation(() => ForgotPasswordOutput, { name: 'forgotPassword' })
+  async forgotPasswordGql(
+    @Args('forgotPasswordInput') forgotPasswordInput: ForgotPasswordInput,
+  ): Promise<ForgotPasswordOutput> {
+    return this.usersService.forgotPasswordGql(forgotPasswordInput);
+  }
+
+  @Mutation(() => ResetPasswordOutput, { name: 'resetPassword' })
+  async resetPasswordGql(
+    @Args('resetPasswordInput') resetPasswordInput: ResetPasswordInput,
+  ): Promise<ResetPasswordOutput> {
+    return this.usersService.resetPasswordGql(resetPasswordInput);
+  }
+
+  @Mutation(() => VerityEmailOutput)
+  verifyEmailGql(
+    @Args('verifyEmailInput') verifyEmailInput: VerityEmailInput,
+  ): Promise<VerityEmailOutput> {
+    return this.usersService.verifyEmailGql(verifyEmailInput);
   }
 }

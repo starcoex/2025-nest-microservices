@@ -8,10 +8,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserInput, CreateUserOutput } from './dto/create-user.input';
-import { UpdateUserInput } from './dto/update-user.input';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import { isValidPhoneNumber, AsYouType } from 'libphonenumber-js';
+import { AsYouType, isValidPhoneNumber } from 'libphonenumber-js';
 import {
   NOTIFICATIONS_SERVICE_NAME,
   NotificationsServiceClient,
@@ -24,6 +23,17 @@ import { User } from './entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UpdateInput, UpdateOutput } from './dto/update-input';
+import { MeUserOutput } from './dto/me-user.input';
+import {
+  ForgotPasswordInput,
+  ForgotPasswordOutput,
+} from './dto/forgot-password.input';
+import {
+  ResetPasswordInput,
+  ResetPasswordOutput,
+} from './dto/reset-password.input';
+import { VerityEmailInput, VerityEmailOutput } from './dto/verity-email.input';
+import { date } from 'joi';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -40,80 +50,6 @@ export class UsersService implements OnModuleInit {
       this.client.getService<NotificationsServiceClient>(
         NOTIFICATIONS_SERVICE_NAME,
       );
-  }
-
-  private async checkPasswordHistory(email: string, newPasswordPlain: string) {
-    const user = await this.prismaService.user.findUnique({ where: { email } });
-    if (!user) {
-      return;
-    }
-    const passwordHistory = await this.prismaService.passwordHistory.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-    for (const history of passwordHistory) {
-      if (await bcrypt.compare(newPasswordPlain, history.password)) {
-        throw new BadRequestException('이미 이 비밀번호를 사용하셨습니다.');
-      }
-    }
-  }
-
-  async validatePasswordChange(userId: number, newPassword: string) {
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-    const history = await this.prismaService.passwordHistory.findMany({
-      where: { userId },
-      select: { password: true },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-    const isPasswordReused = history.some(
-      (item) => item.password === hashedPassword,
-    );
-    if (isPasswordReused) {
-      throw new BadRequestException('사용한 비밀번호는 재사용할 수 없습니다.');
-    }
-  }
-
-  async recordPasswordChange(userId: number, newPassword: string) {
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-    await this.prismaService.passwordHistory.create({
-      data: {
-        userId,
-        password: hashedPassword,
-      },
-    });
-  }
-
-  async updateUserPassword(updateUserInput: UpdateUserInput) {
-    const user = await this.prismaService.user.findUnique({
-      where: { id: updateUserInput.id },
-    });
-    if (!user) {
-      throw new NotFoundException('사용자가 없습니다.');
-    }
-
-    const passwordMatch = await bcrypt.compare(
-      updateUserInput.oldPassword,
-      user.password,
-    );
-    if (!passwordMatch) {
-      throw new BadRequestException('잘못된 이전 비림번호입니다.');
-    }
-
-    await this.validatePasswordChange(
-      updateUserInput.id,
-      updateUserInput.password,
-    );
-    const hashedPassword = await bcrypt.hash(updateUserInput.password, 12);
-    await this.prismaService.user.update({
-      where: { id: updateUserInput.id },
-      data: { password: hashedPassword },
-    });
-    await this.recordPasswordChange(
-      updateUserInput.id,
-      updateUserInput.password,
-    );
   }
 
   async getUser(userId: number) {
@@ -138,7 +74,6 @@ export class UsersService implements OnModuleInit {
 
   async verifyUserRefreshToken(refreshToken: string, userId: number) {
     const user = await this.getUser(userId);
-    console.log('refreshToken', user);
     const authenticated = await bcrypt.compare(
       refreshToken,
       user.refresh_token,
@@ -204,7 +139,6 @@ export class UsersService implements OnModuleInit {
         data: { title: 'title', content: 'content' },
       })
       .subscribe(() => {});
-    // await this.recordPasswordChange(newUser.id, password);
     return newUser;
   }
 
@@ -269,6 +203,16 @@ export class UsersService implements OnModuleInit {
 
       await this.updateUser(newUser.id, token.refresh_token);
 
+      const activationCode = await this.createActivationToken(newUser.id);
+      const { activation_token, activation_code } = activationCode;
+      const verification = await this.prismaService.activation.create({
+        data: {
+          activation_code: activation_code,
+          activation_token: activation_token,
+          userId: newUser.id,
+        },
+      });
+
       this.notificationsService
         .notifyEmail({
           email: newUser.email,
@@ -279,12 +223,11 @@ export class UsersService implements OnModuleInit {
             '../../../',
             '/email-templates/activation-mail.ejs',
           ),
-          activationCode: '1234',
+          activationCode: verification.activation_code,
           text: 'Text1',
           data: { title: 'title', content: 'content' },
         })
         .subscribe(() => {});
-      // await this.recordPasswordChange(newUser.id, password);
       return {
         user: newUser,
         access_token: token.access_token,
@@ -316,11 +259,11 @@ export class UsersService implements OnModuleInit {
     });
   }
 
-  async getUsers() {
+  async getUsersGql() {
     return this.prismaService.user.findMany();
   }
 
-  async findOne(id: number) {
+  async getUserGql(id: number) {
     return this.prismaService.user.findUnique({
       where: { id: id },
     });
@@ -335,10 +278,13 @@ export class UsersService implements OnModuleInit {
     });
   }
 
-  async updateGql(id: number, updateInput: UpdateInput): Promise<UpdateOutput> {
+  async updateUserGql(
+    id: number,
+    updateInput: UpdateInput,
+  ): Promise<UpdateOutput> {
     try {
       const user = await this.prismaService.user.findUnique({
-        where: { id: updateInput.id },
+        where: { id },
       });
       const updatedUser = await this.prismaService.user.update({
         where: { id: user.id },
@@ -356,8 +302,43 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async removeUserGql(id: number) {
+    return this.prismaService.user.delete({ where: { id } });
+  }
+
+  async meGql(userId: number): Promise<MeUserOutput> {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+      });
+      if (!user) {
+        return {
+          ok: false,
+          error: '사용자가 인증이 안 되었습니다.',
+        };
+      }
+      return {
+        ok: true,
+        user,
+      };
+    } catch (error) {
+      return { ok: false, error: error };
+    }
+  }
+
+  // create activation code
+  async createActivationToken(userId: number) {
+    const activation_code = Math.floor(1000 + Math.random() * 9000).toString();
+    const activation_token = this.jwtService.sign(
+      { id: userId },
+      {
+        secret: this.configService.getOrThrow(
+          'AUTH_JWT_ACTIVATION_TOKEN_SECRET',
+        ),
+        expiresIn: `${this.configService.getOrThrow('AUTH_JWT_ACTIVATION_EXPIRATION')}m`,
+      },
+    );
+    return { activation_token, activation_code };
   }
 
   // generate access and refresh tokens for the user
@@ -376,15 +357,153 @@ export class UsersService implements OnModuleInit {
     const [access_token, refresh_token] = await Promise.all([
       this.jwtService.signAsync(tokenPayload, {
         secret: this.configService.getOrThrow('AUTH_JWT_ACCESS_TOKEN_SECRET'),
-        // expiresIn: `${this.configService.getOrThrow('AUTH_JWT_ACCESS_EXPIRATION')}s`,
-        expiresIn: '30s',
+        expiresIn: `${this.configService.getOrThrow('AUTH_JWT_ACCESS_EXPIRATION')}s`,
+        // expiresIn: '30s',
       }),
       this.jwtService.signAsync(tokenPayload, {
         secret: this.configService.getOrThrow('AUTH_JWT_REFRESH_TOKEN_SECRET'),
-        // expiresIn: `${this.configService.getOrThrow('AUTH_JWT_REFRESH_EXPIRATION')}s`,
-        expiresIn: '15m',
+        expiresIn: `${this.configService.getOrThrow('AUTH_JWT_REFRESH_EXPIRATION')}s`,
+        // expiresIn: '15m',
       }),
     ]);
     return { access_token, refresh_token };
+  }
+
+  // generate forgot password link
+  async generateForgotPasswordLink(userId: number) {
+    return this.jwtService.sign(
+      { id: userId },
+      {
+        secret: this.configService.getOrThrow(
+          'AUTH_JWT_FORGOT_PASSWORD_TOKEN_SECRET',
+        ),
+        expiresIn: `${this.configService.getOrThrow('AUTH_JWT_FORGOT_PASSWORD_EXPIRATION')}m`,
+      },
+    );
+  }
+
+  async forgotPasswordGql(
+    forgotPasswordInput: ForgotPasswordInput,
+  ): Promise<ForgotPasswordOutput> {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: { email: forgotPasswordInput.email },
+      });
+      if (!user) {
+        return {
+          ok: false,
+          error: '사용자를 찾을 수 없습니다.',
+          message: null,
+        };
+      }
+      const forgotPasswordToken = await this.generateForgotPasswordLink(
+        user.id,
+      );
+      const resetPasswordUrl =
+        this.configService.getOrThrow('AUTH_UI_REDIRECT') +
+        `/reset-password?verify=${forgotPasswordToken}`;
+
+      this.notificationsService
+        .notifyEmail({
+          email: user.email,
+          name: user.name,
+          subject: '패스워드 초기화.',
+          templatePath: join(
+            __dirname,
+            '../../../',
+            '/email-templates/forgot-password.ejs',
+          ),
+          activationCode: resetPasswordUrl,
+          text: 'Text1',
+          data: { title: 'title', content: 'content' },
+        })
+        .subscribe(() => {});
+      return {
+        ok: true,
+        message: '당신에 패스워드 초기화를 성공했씁니다.',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error.message,
+        error: error,
+      };
+    }
+  }
+
+  async resetPasswordGql(
+    resetPasswordInput: ResetPasswordInput,
+  ): Promise<ResetPasswordOutput> {
+    try {
+      const decoded = await this.jwtService.decode(
+        resetPasswordInput.activation_code,
+      );
+      if (!decoded || decoded.exp * 1000 < Date.now()) {
+        return {
+          ok: false,
+          error: '유효하지 않는 토큰입니다.',
+        };
+      }
+      const user = await this.prismaService.user.update({
+        where: {
+          id: decoded.id,
+        },
+        data: {
+          password: await bcrypt.hash(resetPasswordInput.password, 10),
+        },
+      });
+      return {
+        ok: true,
+        user,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async verifyEmailGql(
+    verifyEmailInput: VerityEmailInput,
+  ): Promise<VerityEmailOutput> {
+    try {
+      const verification = await this.prismaService.activation.findFirst({
+        where: { activation_code: verifyEmailInput.activation_code },
+      });
+      const newUser = this.jwtService.verify(verification.activation_token, {
+        secret: this.configService.getOrThrow(
+          'AUTH_JWT_ACTIVATION_TOKEN_SECRET',
+        ),
+      });
+
+      // if (newUser.activation_token !== verifyEmailInput.activation_token) {
+      //   return {
+      //     ok: false,
+      //     error: '유효하지 않는 토큰입니다.',
+      //   };
+      // }
+      if (verification) {
+        await this.prismaService.user.update({
+          where: { id: verification.userId },
+          data: {
+            activate: true,
+            activation: {
+              update: { activation_code: null, activation_token: null },
+            },
+          },
+        });
+        return { ok: true };
+      }
+      return {
+        ok: false,
+        error: '인증이 실패했습니다.',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+      };
+    }
   }
 }
