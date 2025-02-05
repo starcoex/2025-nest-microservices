@@ -1,7 +1,7 @@
 import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { AbstractEntity } from '@app/common';
 import { User } from './user.entity';
-import { IsOptional, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 @InputType('VerificationInput', { isAbstract: true })
 @ObjectType()

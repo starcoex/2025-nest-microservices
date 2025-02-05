@@ -20,11 +20,11 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.use(cookieParser());
-  // app.enableCors({
-  //   origin: 'http://localhost:3000',
-  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  //   credentials: true,
-  // });
+  app.enableCors({
+    origin: 'http://localhost:3000',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
   const port = app.get(ConfigService).getOrThrow('AUTH_PORT') || 3102;
   app.useLogger(app.get(PinoLogger));
   await app.startAllMicroservices();

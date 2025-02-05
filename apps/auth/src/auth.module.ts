@@ -23,6 +23,8 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { AccessAuthGuard } from './guard/access-auth.guard';
 import { RefreshAuthGuard } from './guard/refresh-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { GraphQLError } from 'graphql/error';
+import { ValidationError } from 'class-validator';
 
 @Module({
   imports: [
@@ -52,9 +54,40 @@ import { PrismaService } from '../prisma/prisma.service';
       playground: false,
       context: ({ req, res }) => ({ req, res }),
       plugins: [ApolloServerPluginLandingPageLocalDefault()],
+
       autoSchemaFile: {
         federation: 2,
       },
+      // formatError: (error: GraphQLError) => {
+      //   if (
+      //     error.extensions?.exceptions?.message &&
+      //     Array.isArray(error.extensions.message) &&
+      //     error.extensions.exception.message[0] instanceof ValidationError
+      //   ) {
+      //     const validationErrors = error.extensions.exception.message as [
+      //       ValidationError,
+      //     ];
+      //     const formattedErrors = validationErrors.map((err) => ({
+      //       field: err.property,
+      //       messages: Object.values(err.constraints),
+      //     }));
+      //     return {
+      //       ...error,
+      //       message: 'Validation failed',
+      //       extensions: {
+      //         ...error.extensions,
+      //         errors: formattedErrors,
+      //       },
+      //     };
+      //   } else {
+      //     console.error('GraphQL Error:', error);
+      //
+      //     return {
+      //       ...error,
+      //       message: error.message || 'Internal server error',
+      //     };
+      //   }
+      // },
     }),
     LoggerModule,
     UsersModule,

@@ -11,7 +11,10 @@ import { AbstractOutEntity } from '@app/common';
 @InputType()
 export class LoginInput extends PartialType(
   PickType(User, ['email', 'password']),
-) {}
+) {
+  @Field(() => Boolean, { nullable: true })
+  remember_me?: boolean;
+}
 
 @ObjectType()
 export class LoginOutput extends AbstractOutEntity {

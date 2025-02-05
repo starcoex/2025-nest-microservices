@@ -60,10 +60,14 @@ export class AuthService {
 
   async loginGraphql(loginInput: LoginInput): Promise<LoginOutput> {
     try {
-      const { email, password } = loginInput;
+      const { email, password, remember_me } = loginInput;
       const user = await this.usersService.verifyUser(email, password);
+      if (!user.activate) {
+        return { ok: false, error: '이메일 인증이 안 되었습니다.' };
+      }
       const token = await this.usersService.getTokens(user.id);
       await this.usersService.updateUser(user.id, token.refresh_token);
+
       return {
         user,
         access_token: token.access_token,
@@ -98,6 +102,7 @@ export class AuthService {
         };
       }
       const tokens = await this.usersService.getTokens(user.id);
+      await this.usersService.updateUser(user.id, tokens.refresh_token);
       return {
         ok: true,
         access_token: tokens.access_token,

@@ -7,12 +7,7 @@ export class ActivationUserInput {
   @Field()
   @IsNotEmpty({ message: '활성화 토큰은 필수입니다.' })
   @IsString()
-  activationCode: string;
-
-  @Field()
-  @IsNotEmpty({ message: '활성화 코드는 필수입니다.' })
-  @IsString()
-  activation_token: string;
+  activation_code: string;
 }
 
 @ObjectType()

@@ -38,6 +38,9 @@ importers:
       prisma:
         specifier: ^6.1.0
         version: 6.1.0
+      uuid:
+        specifier: ^11.0.5
+        version: 11.0.5
     devDependencies:
       '@types/bcryptjs':
         specifier: ^2.4.6
@@ -327,6 +330,10 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
+  uuid@11.0.5:
+    resolution: {integrity: sha512-508e6IcKLrhxKdBbcA2b4KQZlLVp2+J5UwQ6F7Drckkc5N9ZJwFa4TgWtsww9UG8fGHbm6gbV19TdM5pQ4GaIA==}
+    hasBin: true
+
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
@@ -614,6 +621,8 @@ snapshots:
   undici-types@6.20.0: {}
 
   utils-merge@1.0.1: {}
+
+  uuid@11.0.5: {}
 
   which@2.0.2:
     dependencies:

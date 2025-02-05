@@ -12,6 +12,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { AbstractEntity } from '@app/common/graphql';
+import { Verification } from './verification.entity';
 
 @InputType('AvatarsInput', { isAbstract: true })
 @ObjectType()
@@ -46,7 +47,7 @@ export class User extends AbstractEntity {
   email: string;
 
   @Field()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: '비밀번호는 필수 입니다.' })
   @MinLength(6, { message: '비밀번호는 최소 6자 이상이어야 합니다.' })
   @Matches(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
@@ -81,4 +82,7 @@ export class User extends AbstractEntity {
 
   @Field(() => Avatars, { nullable: true })
   avatars?: Avatars;
+
+  @Field(() => Verification, { nullable: true })
+  verification?: Verification;
 }

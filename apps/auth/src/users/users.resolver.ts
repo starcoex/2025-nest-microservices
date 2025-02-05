@@ -15,7 +15,12 @@ import {
   ResetPasswordInput,
   ResetPasswordOutput,
 } from './dto/reset-password.input';
-import { VerityEmailInput, VerityEmailOutput } from './dto/verity-email.input';
+import {
+  ResendVerificationCodeInput,
+  ResendVerificationCodeOutput,
+  VerityEmailInput,
+  VerityEmailOutput,
+} from './dto/verity-email.input';
 
 @Resolver(() => User)
 export class UsersResolver {
@@ -81,9 +86,26 @@ export class UsersResolver {
   }
 
   @Mutation(() => VerityEmailOutput)
-  verifyEmailGql(
+  async verifyEmailGql(
     @Args('verifyEmailInput') verifyEmailInput: VerityEmailInput,
   ): Promise<VerityEmailOutput> {
     return this.usersService.verifyEmailGql(verifyEmailInput);
+  }
+
+  @Mutation(() => ResendVerificationCodeOutput, {
+    name: 'resendVerificationCode',
+  })
+  async resendVerificationCode(
+    @Args('resendVerificationCodeInput')
+    resendVerificationCodeInput: ResendVerificationCodeInput,
+  ) {
+    return this.usersService.resendVerificationCode(
+      resendVerificationCodeInput,
+    );
+  }
+
+  @Mutation(() => User)
+  async rememberMeGql(@Args('rememberMeInput') rememberMeInput: User) {
+    return this.usersService.rememberMeGql();
   }
 }

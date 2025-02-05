@@ -5,6 +5,7 @@ import { LoginInput, LoginOutput } from './dto/login.input';
 import { TokensOutput } from './dto/tokens-input';
 import { RefreshAuthGuard } from './guard/refresh-auth.guard';
 import { LogoutInput } from './dto/logout.input';
+import { GqlCurrentUser, TokenPayload } from '@app/common';
 
 @Resolver()
 export class AuthResolver {
@@ -20,10 +21,10 @@ export class AuthResolver {
   @Mutation(() => TokensOutput)
   @UseGuards(RefreshAuthGuard)
   async refreshGraphql(
-    @Args('userId') userId: number,
+    @GqlCurrentUser() user: TokenPayload,
     @Args('refresh_token') refresh_token: string,
   ): Promise<TokensOutput> {
-    return this.authService.refreshTokensGql(userId, refresh_token);
+    return this.authService.refreshTokensGql(user.userId, refresh_token);
   }
 
   @Mutation(() => LoginOutput)

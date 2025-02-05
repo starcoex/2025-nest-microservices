@@ -32,12 +32,17 @@ import {
   ResetPasswordInput,
   ResetPasswordOutput,
 } from './dto/reset-password.input';
-import { VerityEmailInput, VerityEmailOutput } from './dto/verity-email.input';
-import { date } from 'joi';
+import {
+  ResendVerificationCodeInput,
+  ResendVerificationCodeOutput,
+  VerityEmailInput,
+  VerityEmailOutput,
+} from './dto/verity-email.input';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
   private notificationsService: NotificationsServiceClient;
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
@@ -63,8 +68,22 @@ export class UsersService implements OnModuleInit {
     return user;
   }
 
+  async getMe(user: User) {
+    const newUser = await this.prismaService.user.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자가 없습니다.');
+    }
+    return newUser;
+  }
+
   async verifyUser(email: string, password: string) {
     const user = await this.prismaService.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new UnauthorizedException('사용자가 없습니다.');
+    }
     const hashedPassword = await bcrypt.compare(password, user.password);
     if (!hashedPassword) {
       throw new UnauthorizedException('비밀번호가 유효하지 않습니다.');
@@ -212,7 +231,6 @@ export class UsersService implements OnModuleInit {
           userId: newUser.id,
         },
       });
-
       this.notificationsService
         .notifyEmail({
           email: newUser.email,
@@ -232,6 +250,8 @@ export class UsersService implements OnModuleInit {
         user: newUser,
         access_token: token.access_token,
         refresh_token: token.refresh_token,
+        activation_code: verification.activation_code,
+        activation_token: verification.activation_token,
         ok: true,
       };
     } catch (error) {
@@ -330,7 +350,7 @@ export class UsersService implements OnModuleInit {
   async createActivationToken(userId: number) {
     const activation_code = Math.floor(1000 + Math.random() * 9000).toString();
     const activation_token = this.jwtService.sign(
-      { id: userId },
+      { id: userId, activation_code },
       {
         secret: this.configService.getOrThrow(
           'AUTH_JWT_ACTIVATION_TOKEN_SECRET',
@@ -468,42 +488,102 @@ export class UsersService implements OnModuleInit {
     verifyEmailInput: VerityEmailInput,
   ): Promise<VerityEmailOutput> {
     try {
+      console.log('verifyEmailInput', verifyEmailInput);
       const verification = await this.prismaService.activation.findFirst({
         where: { activation_code: verifyEmailInput.activation_code },
       });
+      console.log('verification', verification);
+      const user = await this.getUser(verification.userId);
+      console.log(user);
       const newUser = this.jwtService.verify(verification.activation_token, {
         secret: this.configService.getOrThrow(
           'AUTH_JWT_ACTIVATION_TOKEN_SECRET',
         ),
       });
-
-      // if (newUser.activation_token !== verifyEmailInput.activation_token) {
-      //   return {
-      //     ok: false,
-      //     error: '유효하지 않는 토큰입니다.',
-      //   };
-      // }
+      console.log('newUser', newUser);
+      if (verifyEmailInput.activation_code !== verification.activation_code) {
+        return {
+          ok: false,
+          error: '유효하지 않는 코드입니다.',
+        };
+      }
+      if (newUser && newUser.exp) {
+        const expiryDate = new Date(newUser.exp * 1000);
+        console.log('expiryDate', expiryDate);
+        const now = new Date();
+        if (expiryDate < now) {
+          await this.prismaService.user.delete({ where: { id: user.id } });
+          return { ok: false, error: '토큰이 만료되었씁니다.' };
+        }
+      }
       if (verification) {
         await this.prismaService.user.update({
           where: { id: verification.userId },
           data: {
             activate: true,
             activation: {
-              update: { activation_code: null, activation_token: null },
+              update: { activation_code: '', activation_token: '' },
             },
           },
         });
-        return { ok: true };
+        return { ok: true, user };
       }
-      return {
-        ok: false,
-        error: '인증이 실패했습니다.',
-      };
+      return { ok: false, error: '인증을 찾을 수 없습니다.' };
     } catch (error) {
-      return {
-        ok: false,
-        error: error.message,
-      };
+      return { ok: false, error: '인증을 할 수 없습니다.' };
     }
   }
+
+  async resendVerificationCode(
+    resendVerificationCodeInput: ResendVerificationCodeInput,
+  ): Promise<ResendVerificationCodeOutput> {
+    try {
+      const newVerification = await this.prismaService.activation.findFirst({
+        where: {
+          activation_token: resendVerificationCodeInput.activation_token,
+        },
+      });
+      const user = await this.getUser(newVerification.userId);
+      const { activation_token, activation_code } =
+        await this.createActivationToken(newVerification.userId);
+
+      const verification = await this.prismaService.activation.update({
+        where: { id: newVerification.id },
+        data: {
+          activation_code,
+          activation_token: resendVerificationCodeInput.activation_token,
+          user: { update: { activate: false } },
+        },
+      });
+      const newUser = await this.jwtService.verify(
+        resendVerificationCodeInput.activation_token,
+        {
+          secret: this.configService.getOrThrow(
+            'AUTH_JWT_ACTIVATION_TOKEN_SECRET',
+          ),
+        },
+      );
+      this.notificationsService
+        .notifyEmail({
+          email: user.email,
+          name: user.name,
+          subject: '당신에 계정을 활성화 시키세요.',
+          templatePath: join(
+            __dirname,
+            '../../../',
+            '/email-templates/activation-mail.ejs',
+          ),
+          activationCode: verification.activation_code,
+          text: 'Text1',
+          data: { title: 'title', content: 'content' },
+        })
+        .subscribe(() => {});
+
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  async rememberMeGql() {}
 }
